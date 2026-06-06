@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// === ENTITAS PENGGUNA ===
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String
+  name      String
+  bookings  Booking[]
+  createdAt DateTime  @default(now())
+}
+
+// === ENTITAS PENERBANGAN ===
+model Airline {
+  id      String   @id @default(uuid())
+  name    String   // contoh: Garuda Indonesia
+  code    String   @unique // contoh: GA
+  logo    String?
+  flights Flight[]
+}
+
+model Flight {
+  id            String    @id @default(uuid())
+  airlineId     String
+  airline       Airline   @relation(fields: [airlineId], references: [id])
+  flightNumber  String    // contoh: GA-123
+  origin        String    // contoh: SUB (Surabaya)
+  destination   String    // contoh: CGK (Jakarta)
+  departureTime DateTime
+  arrivalTime   DateTime
+  basePrice     Float     // Harga dasar sebelum pajak
+  seats         Seat[]
+  bookings      Booking[]
+}
+
+// === ENTITAS KURSI ===
+model Seat {
+  id         String     @id @default(uuid())
+  flightId   String
+  flight     Flight     @relation(fields: [flightId], references: [id])
+  seatNumber String     // contoh: 12A, 12B
+  status     SeatStatus @default(AVAILABLE)
+  passenger  Passenger? 
+}
+
+enum SeatStatus {
+  AVAILABLE
+  LOCKED      
+  BOOKED      
+}
+
+// === ENTITAS TRANSAKSI & PENUMPANG ===
+model Booking {
+  id            String        @id @default(uuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  flightId      String
+  flight        Flight        @relation(fields: [flightId], references: [id])
+  bookingCode   String        @unique // Kode PNR, misal: TKIN-XYZ123
+  totalPrice    Float
+  status        PaymentStatus @default(PENDING)
+  midtransUrl   String?       
+  expiresAt     DateTime      
+  passengers    Passenger[]
+  createdAt     DateTime      @default(now())
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model Passenger {
+  id             String  @id @default(uuid())
+  bookingId      String
+  booking        Booking @relation(fields: [bookingId], references: [id])
+  seatId         String  @unique 
+  seat           Seat    @relation(fields: [seatId], references: [id])
+  title          String  // Mr, Mrs, Ms
+  fullName       String
+  identityNumber String  // NIK / KTP
+}
