@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@theme {
+  --color-tiketin-navy: #0A1B3B;
+  --color-tiketin-blue: #0D6EFD;
+  --color-tiketin-orange: #FB923C;
+}
 :root {
   --background: #ffffff;
   --foreground: #171717;
