@@ -1,92 +1,112 @@
-import Image from 'next/image';
-import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
+import Image from "next/image";
 
-const MOCK_PROMOS = [
+const PROMOS = [
   {
     id: 1,
-    title: 'Liburan Hemat ke Bali',
-    description: 'Nikmati potongan harga spesial untuk penerbangan dan hotel di Bali.',
-    image: 'https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?q=80&w=2070&auto=format&fit=crop',
-    tag: 'Diskon 20%',
-    tagColor: 'bg-orange-500',
-    link: '#'
+    image:
+      "https://lh3.googleusercontent.com/aida-public/AB6AXuDFBzcYm8-eoEqUkqsb0W5oj1rBrfNOl-El2v1TIeTrmYafJeRd1nz1KajwD1RYbV_a8zrC3mF9fkj0SnHhh18wrUt5oIGrzAJoBDXxL2Y_q3QApNeRnYnv3jfHRYyy-xVW7npTsLAKcw1ObHB-8NY7zk0wlWRsJtvkoYwuCalSHsxQ1jsrSAAwKpc8l3VR8PWEh-KG6VceDTEB3P0Yg5lJxEFmt1u3lQzpJF4yxee3oYHdgVZazSpIe18iL8IzkhJF1xEFZFt4b7o",
+    alt: "Bali Temple",
+    badge: "Diskon 20%",
+    badgeClass: "bg-error text-on-error",
+    categoryIcon: "flight",
+    category: "Penerbangan Domestik",
+    title: "Terbang ke Bali Lebih Hemat",
+    description:
+      "Nikmati potongan harga hingga Rp 500.000 untuk penerbangan ke Bali dengan maskapai pilihan.",
   },
   {
     id: 2,
-    title: 'Terbang Nyaman, Dompet Aman',
-    description: 'Dapatkan cashback hingga Rp 500.000 untuk transaksi pertama.',
-    image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=2074&auto=format&fit=crop',
-    tag: 'Cashback',
-    tagColor: 'bg-blue-500',
-    link: '#'
+    image:
+      "https://lh3.googleusercontent.com/aida-public/AB6AXuC4tA6wQAbAXc1JYpSFwIs5YoHCDAk6WXHV8ZUvaSxS_kSDsSWMDdlrI8svkN-MxpTWwTSWmq643fAcoPUah_foaF49G8-lhYcvC42x11DCRzpUX74SiO0ZRYr9i26PcUhIyZMWAUhZG4ZQkVrTD4TIHg23ZGucDGkFwA9KQKr3MkByoVicP9ByKcK4MRd7_yE2llX9daIOkFDO4nfofv2RluxFwILi5iTHAPe5DXwGU-WFox8l1z8yJhTzSvF-OTzfSIttCiqoC6A",
+    alt: "Tokyo Cityscape",
+    badge: "Cashback",
+    badgeClass: "bg-primary text-on-primary",
+    categoryIcon: "public",
+    category: "Rute Internasional",
+    title: "Eksplorasi Tokyo Musim Gugur",
+    description:
+      "Dapatkan cashback langsung hingga Rp 1.000.000 untuk pembelian tiket pulang pergi ke Tokyo.",
   },
   {
     id: 3,
-    title: 'Staycation Seru Keluarga',
-    description: 'Paket bundling tiket pesawat & hotel bintang 4, ekstra murah.',
-    image: 'https://images.unsplash.com/photo-1542314831-c53cd4b85ca4?q=80&w=2070&auto=format&fit=crop',
-    tag: 'Paket Bundling',
-    tagColor: 'bg-teal-500',
-    link: '#'
-  }
-];
+    image:
+      "https://lh3.googleusercontent.com/aida-public/AB6AXuDT3sfXNpTSeG6Gf4X8a587A5JaSOjIiHqHLizjmf8vAWoDrQSh0oGxYiunHqlnluM-Wo7Xx5eYXLHOvkNFoj1oNnSG6p6tpqYTJt5MekgbSIgV32BSQZu_r97kEuAlC4KiBx1CY3Y5dCSuct9Txamg9yZbIEIzWgGOArUG-WpnfMii_VE2LeaSAzhriM1QMebwcVPy5Ldk9p02lCL7FVLsap8YXXwGJXXE23A1Q_cwtrcmZRqEZYimif8LzxnVGFvYUsn7mTn11uk",
+    alt: "Luxury Resort",
+    badge: "Paket Bundling",
+    badgeClass: "bg-secondary text-on-secondary",
+    categoryIcon: "hotel",
+    category: "Tiket & Hotel",
+    title: "Liburan Mewah di Lombok",
+    description:
+      "Booking paket penerbangan dan hotel bintang 5 di Lombok, hemat hingga 30% dari harga normal.",
+  },
+] as const;
 
 export default function PromoSection() {
   return (
-    <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      {/* Header */}
+    <section className="py-24 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
       <div className="flex justify-between items-end mb-8">
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold text-[#0A1B3B]">Promo Populer</h2>
-          <p className="text-gray-500 mt-2">Dapatkan penawaran terbaik untuk perjalanan Anda</p>
+          <h2 className="text-headline-lg font-headline-lg text-on-surface mb-2">
+            Promo Populer
+          </h2>
+          <p className="text-body-md font-body-md text-on-surface-variant">
+            Penawaran terbaik untuk perjalanan Anda selanjutnya.
+          </p>
         </div>
-        <Link href="#" className="hidden sm:flex items-center text-[#0A1B3B] font-semibold hover:underline">
+        <button
+          type="button"
+          className="text-primary text-label-md font-label-md hover:underline hidden md:block"
+        >
           Lihat Semua Promo
-          <ArrowRight size={16} className="ml-1" />
-        </Link>
+        </button>
       </div>
-
-      {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-        {MOCK_PROMOS.map((promo) => (
-          <div key={promo.id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow border border-gray-100 flex flex-col">
-            {/* Image Container */}
-            <div className="relative h-48 w-full">
-              <Image 
-                src={promo.image} 
-                alt={promo.title}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+        {PROMOS.map((promo) => (
+          <div
+            key={promo.id}
+            className="group cursor-pointer rounded-xl overflow-hidden border border-outline-variant bg-surface shadow-[0px_10px_15px_-3px_rgba(15,23,42,0.02)] hover:shadow-[0px_10px_15px_-3px_rgba(15,23,42,0.08)] transition-all duration-300 transform hover:-translate-y-1"
+          >
+            <div className="h-48 relative overflow-hidden bg-surface-container-high">
+              <Image
+                alt={promo.alt}
+                src={promo.image}
                 fill
-                className="object-cover"
+                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                sizes="(max-width: 768px) 100vw, 33vw"
               />
-              {/* Tag */}
-              <div className={`absolute top-4 left-4 ${promo.tagColor} text-white text-xs font-bold px-3 py-1.5 rounded-md uppercase tracking-wide`}>
-                {promo.tag}
+              <div
+                className={`absolute top-4 left-4 px-2 py-1 rounded text-label-sm font-label-sm ${promo.badgeClass}`}
+              >
+                {promo.badge}
               </div>
             </div>
-
-            {/* Content */}
-            <div className="p-6 flex flex-col flex-grow">
-              <h3 className="text-lg font-bold text-gray-900 mb-2">{promo.title}</h3>
-              <p className="text-gray-600 text-sm mb-6 flex-grow">{promo.description}</p>
-              
-              <Link href={promo.link} className="inline-block mt-auto">
-                <span className="text-[#0A1B3B] font-bold text-sm hover:underline">
-                  Gunakan Promo
-                </span>
-              </Link>
+            <div className="p-6">
+              <div className="text-label-sm font-label-sm text-on-surface-variant mb-1 flex items-center gap-1">
+                <span className="material-symbols-outlined text-[16px]">
+                  {promo.categoryIcon}
+                </span>{" "}
+                {promo.category}
+              </div>
+              <h3 className="text-headline-md font-headline-md text-on-surface mb-2">
+                {promo.title}
+              </h3>
+              <p className="text-body-sm font-body-sm text-on-surface-variant mb-4">
+                {promo.description}
+              </p>
+              <div className="text-primary text-label-md font-label-md group-hover:underline">
+                Gunakan Promo
+              </div>
             </div>
           </div>
         ))}
       </div>
-
-      {/* Mobile Link */}
-      <div className="mt-8 text-center sm:hidden">
-        <Link href="#" className="inline-flex items-center text-[#0A1B3B] font-semibold hover:underline">
-          Lihat Semua Promo
-          <ArrowRight size={16} className="ml-1" />
-        </Link>
-      </div>
+      <button
+        type="button"
+        className="w-full mt-6 py-3 border border-outline-variant rounded-lg text-primary font-label-md text-label-md hover:bg-surface-container-low transition-colors md:hidden"
+      >
+        Lihat Semua Promo
+      </button>
     </section>
   );
 }

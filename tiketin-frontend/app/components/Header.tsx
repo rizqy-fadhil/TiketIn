@@ -1,56 +1,50 @@
-import Link from 'next/link';
+import Link from "next/link";
 
 export default function Header() {
   return (
-    <header className="bg-white shadow-sm sticky top-0 z-50">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
-          {/* Logo */}
-          <div className="flex-shrink-0 flex items-center">
-            <Link href="/" className="text-2xl font-bold text-[#0A1B3B]">
-              TiketIn
-            </Link>
-          </div>
-
-          {/* Center Navigation */}
-          <nav className="hidden md:flex space-x-8">
-            <Link href="#" className="text-gray-700 hover:text-[#0A1B3B] font-medium transition-colors">
-              Cari Tiket
-            </Link>
-            <Link href="#" className="text-gray-700 hover:text-[#0A1B3B] font-medium transition-colors">
-              Promo
-            </Link>
-            <Link href="#" className="text-gray-700 hover:text-[#0A1B3B] font-medium transition-colors">
-              Bantuan
-            </Link>
-          </nav>
-
-          {/* Right Buttons */}
-          <div className="hidden md:flex items-center space-x-4">
-            <Link 
-              href="#" 
-              className="text-[#0A1B3B] border border-[#0A1B3B] hover:bg-gray-50 font-semibold px-6 py-2 rounded-lg transition-colors"
-            >
-              Login
-            </Link>
-            <Link 
-              href="#" 
-              className="bg-[#0A1B3B] hover:bg-[#152a55] text-white font-semibold px-6 py-2 rounded-lg transition-colors shadow-md"
-            >
-              Register
-            </Link>
-          </div>
-
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
-            <button className="text-gray-600 hover:text-[#0A1B3B] focus:outline-none">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-          </div>
+    <nav className="bg-surface dark:bg-on-surface text-primary dark:text-inverse-primary docked full-width top-0 border-b border-outline-variant dark:border-outline flat no shadows z-50">
+      <div className="flex justify-between items-center w-full px-margin-desktop max-w-container-max mx-auto h-16">
+        <Link
+          href="/"
+          className="text-headline-md font-headline-md font-bold text-primary dark:text-inverse-primary"
+        >
+          TiketIn
+        </Link>
+        <div className="hidden md:flex gap-8 items-center h-full">
+          <Link
+            className="h-full flex items-center text-primary dark:text-inverse-primary border-b-2 border-primary dark:border-inverse-primary pb-1 text-label-md font-label-md"
+            href="#"
+          >
+            Cari Tiket
+          </Link>
+          <Link
+            className="h-full flex items-center text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-inverse-primary transition-colors duration-200 text-label-md font-label-md"
+            href="#"
+          >
+            Promo
+          </Link>
+          <Link
+            className="h-full flex items-center text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-inverse-primary transition-colors duration-200 text-label-md font-label-md"
+            href="#"
+          >
+            Bantuan
+          </Link>
+        </div>
+        <div className="flex gap-4 items-center">
+          <button
+            type="button"
+            className="text-primary dark:text-inverse-primary hover:text-primary dark:hover:text-inverse-primary transition-colors duration-200 text-label-md font-label-md"
+          >
+            Login
+          </button>
+          <button
+            type="button"
+            className="bg-primary text-on-primary px-4 py-2 rounded text-label-md font-label-md hover:opacity-80 transition-all"
+          >
+            Register
+          </button>
         </div>
       </div>
-    </header>
+    </nav>
   );
 }
