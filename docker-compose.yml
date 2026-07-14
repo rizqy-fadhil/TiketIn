@@ -1,0 +1,40 @@
+
+services:
+  backend:
+    build:
+      context: ./tiketin-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    env_file:
+      - ./tiketin-backend/.env
+    depends_on:
+      - db
+    networks:
+      - tiketin-network
+
+  frontend:
+    build:
+      context: ./tiketin-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+    depends_on:
+      - backend
+    networks:
+      - tiketin-network
+
+  db:
+    image: postgres:15-alpine
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    networks:
+      - tiketin-network
+
+networks:
+  tiketin-network:
+    driver: bridge

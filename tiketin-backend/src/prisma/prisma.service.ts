@@ -1,20 +1,18 @@
-import { Injectable, OnModuleInit, INestApplication } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit {
-  // Constructor kosong, biar Prisma 7 baca otomatis dari prisma.config.ts
-    constructor() {
-    super();
-}
+export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+  constructor() {
+    // Biarkan super() kosong agar Prisma otomatis membaca DATABASE_URL dari file .env
+    super(); 
+  }
 
-async onModuleInit() {
+  async onModuleInit() {
     await this.$connect();
-}
+  }
 
-async enableShutdownHooks(app: INestApplication) {
-    this.$on('beforeExit' as never, async () => {
-        await app.close();
-    });
-    }
+  async onModuleDestroy() {
+    await this.$disconnect();
+  }
 }
