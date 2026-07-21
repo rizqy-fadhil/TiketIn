@@ -13,6 +13,8 @@ services:
       - db
     networks:
       - tiketin-network
+    volumes:
+      - tiketin-db-data:/var/lib/postgresql/data
 
   frontend:
     build:
@@ -38,3 +40,6 @@ services:
 networks:
   tiketin-network:
     driver: bridge
+
+volumes:
+  tiketin-db-data:
