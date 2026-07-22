@@ -5,16 +5,13 @@ services:
       context: ./tiketin-backend
     ports:
       - "3001:3001"
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
     env_file:
       - ./tiketin-backend/.env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - tiketin-network
-    volumes:
-      - tiketin-db-data:/var/lib/postgresql/data
 
   frontend:
     build:
@@ -36,6 +33,13 @@ services:
       - "5432:5432"
     networks:
       - tiketin-network
+    volumes:
+      - tiketin-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tiketin_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 networks:
   tiketin-network:

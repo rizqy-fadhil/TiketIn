@@ -3,3 +3,4 @@ dist
 .next
 .git
 .env
+*.tsbuildinfo
