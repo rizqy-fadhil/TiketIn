@@ -1,5 +1,6 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, ValidationPipe } from '@nestjs/common';
 import { FlightsService } from './flights.service';
+import { SearchFlightsDto } from './dto/search-flight.dto';
 
 @Controller('api/flights')
 export class FlightsController {
@@ -13,20 +14,31 @@ export class FlightsController {
    */
   @Get('search')
   async searchFlights(
-    @Query('origin') origin: string,
-    @Query('destination') destination: string,
-    @Query('date') date: string,
+    @Query(new ValidationPipe({ transform: true })) query: SearchFlightsDto,
   ) {
-    const offers = await this.flightsService.searchFlights(
-      origin,
-      destination,
-      date,
-    );
+    try {
+      const offers = await this.flightsService.searchFlights(
+        query.origin.toUpperCase(),
+        query.destination.toUpperCase(),
+        query.date,
+      );
 
-    return {
-      status: 'success',
-      message: 'Berhasil mengambil data tiket penerbangan dari Duffel API',
-      data: offers,
-    };
+      return {
+        status: 'success',
+        message: 'Berhasil mengambil data tiket penerbangan dari Duffel API',
+        data: offers,
+      };
+    } catch (error: any) {
+      const duffelMessage =
+        error?.errors?.[0]?.message ??
+        error?.message ??
+        'Terjadi kesalahan saat mencari penerbangan';
+
+      return {
+        status: 'error',
+        message: duffelMessage,
+        data: [],
+      };
+    }
   }
 }
