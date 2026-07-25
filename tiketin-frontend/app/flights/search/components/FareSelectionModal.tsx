@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useState } from "react";
 import {
@@ -27,6 +28,7 @@ import {
   getDestinationName,
   DuffelConditionPolicy,
 } from "@/app/lib/duffelHelpers";
+import { BOOKING_OFFER_KEY } from "@/app/flights/booking/components/BookingInner";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -378,12 +380,32 @@ function FlightSummaryHeader({ offer }: { offer: DuffelOffer }) {
 interface Props {
   group: FlightGroup | null;
   onClose: () => void;
-  /** Called when user confirms a specific fare. Currently logs + closes modal. */
-  onSelectFare: (offer: DuffelOffer) => void;
+  /**
+   * Called when user confirms a specific fare.
+   * The modal handles sessionStorage write + navigation internally.
+   * This prop is kept for optional parent-level side effects (e.g. analytics).
+   */
+  onSelectFare?: (offer: DuffelOffer) => void;
 }
 
 export default function FareSelectionModal({ group, onClose, onSelectFare }: Props) {
   const backdropRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  // Write selected offer to sessionStorage and navigate to booking page
+  const handleSelectFare = useCallback(
+    (offer: DuffelOffer) => {
+      try {
+        sessionStorage.setItem(BOOKING_OFFER_KEY, JSON.stringify(offer));
+      } catch {
+        // sessionStorage unavailable (private mode quirks) — still navigate
+      }
+      onSelectFare?.(offer); // optional parent hook (analytics, etc.)
+      onClose();
+      router.push("/flights/booking");
+    },
+    [onClose, onSelectFare, router]
+  );
 
   // Close on backdrop click
   function handleBackdropClick(e: React.MouseEvent) {
@@ -522,7 +544,7 @@ export default function FareSelectionModal({ group, onClose, onSelectFare }: Pro
                 key={offer.id ?? idx}
                 offer={offer}
                 isRecommended={idx === 0}
-                onSelect={onSelectFare}
+                onSelect={handleSelectFare}
               />
             ))}
           </div>

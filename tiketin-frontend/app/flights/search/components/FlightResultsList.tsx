@@ -251,14 +251,8 @@ export default function FlightResultsList({ state }: Props) {
     },
     []
   );
-
-  // Called when user confirms a specific fare inside the modal.
-  // Currently logs the selected offer — wire up to booking flow when ready.
-  const handleFareSelect = useCallback((offer: DuffelOffer) => {
-    console.log("[FareSelection] Selected offer:", offer.id, offer.total_amount, offer.total_currency);
-    // TODO: Navigate to booking/checkout page with the selected offer id
-    setSelectedGroup(null);
-  }, []);
+  // Note: navigation to /flights/booking is handled inside FareSelectionModal
+  // (writes sessionStorage then calls router.push) — no parent handler needed.
 
   if (state.status === "idle") return null;
 
@@ -422,7 +416,6 @@ export default function FlightResultsList({ state }: Props) {
       <FareSelectionModal
         group={selectedGroup}
         onClose={() => setSelectedGroup(null)}
-        onSelectFare={handleFareSelect}
       />
     </>
   );
