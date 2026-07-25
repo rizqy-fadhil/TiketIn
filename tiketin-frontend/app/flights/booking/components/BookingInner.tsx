@@ -25,10 +25,12 @@ import {
   getOfferConditions,
   getSegmentCount,
 } from "@/app/lib/duffelHelpers";
+import ReviewModal from "./ReviewModal";
 
 // ─── Session storage key ──────────────────────────────────────────────────────
 
 export const BOOKING_OFFER_KEY = "tiketin_selected_offer";
+export const BOOKING_PASSENGER_KEY = "tiketin_passenger_data";
 
 // ─── Static data ──────────────────────────────────────────────────────────────
 
@@ -45,7 +47,7 @@ const PHONE_CODES = [
   { code: "+82", label: "🇰🇷 +82 South Korea" },
 ];
 
-const NATIONALITIES = [
+export const NATIONALITIES = [
   { code: "ID", label: "Indonesia" },
   { code: "SG", label: "Singapura" },
   { code: "MY", label: "Malaysia" },
@@ -62,21 +64,21 @@ const NATIONALITIES = [
   { code: "AE", label: "Uni Emirat Arab" },
 ];
 
-const MONTHS = [
+export const MONTHS = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 
 // ─── Form types ───────────────────────────────────────────────────────────────
 
-interface ContactForm {
+export interface ContactForm {
   fullName: string;
   phoneCode: string;
   phone: string;
   email: string;
 }
 
-interface PassengerForm {
+export interface PassengerForm {
   gender: "male" | "female" | "";
   firstName: string;
   lastName: string;
@@ -810,6 +812,7 @@ export default function BookingInner() {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   // ── Contact form state ──────────────────────────────────────────────────────
   const [contact, setContact] = useState<ContactForm>({
@@ -929,18 +932,8 @@ export default function BookingInner() {
       return;
     }
 
-    // All valid — log data (Payment page not yet implemented)
-    const bookingPayload = {
-      offer: offer,
-      contact,
-      passenger,
-      submittedAt: new Date().toISOString(),
-    };
-    console.log("[TiketIn Booking] Payload:", bookingPayload);
-
-    // Show toast
-    setToast("Data tersimpan! Halaman pembayaran belum tersedia — akan segera hadir.");
-    setTimeout(() => setToast(null), 5000);
+    // All valid — open review modal (Step 1)
+    setReviewOpen(true);
   }
 
   // ── Loading ─────────────────────────────────────────────────────────────────
@@ -1120,6 +1113,14 @@ export default function BookingInner() {
           © 2024 TiketIn. Solusi Perjalanan Modern.
         </div>
       </footer>
+
+      {/* ── Step 1 & 2: Review & Loading Transition Modal ── */}
+      <ReviewModal
+        isOpen={reviewOpen}
+        contact={contact}
+        passenger={passenger}
+        onClose={() => setReviewOpen(false)}
+      />
     </div>
   );
 }
