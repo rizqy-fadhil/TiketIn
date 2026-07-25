@@ -1,7 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { DuffelOffer, SortOption, sortOffers } from "@/app/lib/duffelHelpers";
+import {
+  DuffelOffer,
+  SortOption,
+  sortOffers,
+  lowestPriceOffer,
+  fastestOffer,
+  getTotalAmount,
+  getTotalCurrency,
+  getDuration,
+  formatCurrency,
+} from "@/app/lib/duffelHelpers";
 import FlightResultCard from "./FlightResultCard";
 
 // ─── Skeleton loader ─────────────────────────────────────────────────────────
@@ -60,6 +70,121 @@ function EmptyState() {
   );
 }
 
+// ─── Summary Bar ─────────────────────────────────────────────────────────────
+
+interface SummaryBarProps {
+  offers: DuffelOffer[];
+  sortBy: SortOption;
+  onSortChange: (s: SortOption) => void;
+}
+
+function SummaryBar({ offers, sortBy, onSortChange }: SummaryBarProps) {
+  const cheapest = lowestPriceOffer(offers);
+  const fastest = fastestOffer(offers);
+
+  if (!cheapest && !fastest) return null;
+
+  const cheapestAmount = cheapest ? getTotalAmount(cheapest) : 0;
+  const cheapestCurrency = cheapest ? getTotalCurrency(cheapest) : "USD";
+  const cheapestDuration = cheapest ? getDuration(cheapest) : "—";
+
+  const fastestAmount = fastest ? getTotalAmount(fastest) : 0;
+  const fastestCurrency = fastest ? getTotalCurrency(fastest) : "USD";
+  const fastestDuration = fastest ? getDuration(fastest) : "—";
+
+  return (
+    <div className="flex flex-col sm:flex-row gap-3 mb-5">
+      {/* Cheapest price card */}
+      <button
+        type="button"
+        onClick={() => onSortChange("price")}
+        aria-pressed={sortBy === "price"}
+        className={[
+          "flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-200 text-left",
+          sortBy === "price"
+            ? "bg-primary/8 border-primary shadow-[0px_0px_0px_2px_rgba(0,101,145,0.20)]"
+            : "bg-surface-container-lowest border-outline-variant hover:border-primary/50 hover:bg-primary/4",
+        ].join(" ")}
+      >
+        <div
+          className={[
+            "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-colors",
+            sortBy === "price" ? "bg-primary text-on-primary" : "bg-surface-container text-primary",
+          ].join(" ")}
+        >
+          <span className="material-symbols-outlined text-[18px]">sell</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[11px] uppercase tracking-wider font-semibold text-on-surface-variant mb-0.5">
+            Harga Termurah
+          </div>
+          <div
+            className={[
+              "text-base font-bold truncate",
+              sortBy === "price" ? "text-primary" : "text-on-surface",
+            ].join(" ")}
+          >
+            {formatCurrency(cheapestAmount, cheapestCurrency)}
+          </div>
+          <div className="text-[11px] text-on-surface-variant mt-0.5">
+            Durasi {cheapestDuration}
+          </div>
+        </div>
+        {sortBy === "price" && (
+          <span className="material-symbols-outlined text-primary text-[18px] shrink-0">
+            check_circle
+          </span>
+        )}
+      </button>
+
+      {/* Fastest duration card */}
+      <button
+        type="button"
+        onClick={() => onSortChange("duration")}
+        aria-pressed={sortBy === "duration"}
+        className={[
+          "flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-200 text-left",
+          sortBy === "duration"
+            ? "bg-tertiary/8 border-tertiary shadow-[0px_0px_0px_2px_rgba(70,140,74,0.20)]"
+            : "bg-surface-container-lowest border-outline-variant hover:border-tertiary/50 hover:bg-tertiary/4",
+        ].join(" ")}
+      >
+        <div
+          className={[
+            "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-colors",
+            sortBy === "duration"
+              ? "bg-tertiary text-on-tertiary"
+              : "bg-surface-container text-tertiary",
+          ].join(" ")}
+        >
+          <span className="material-symbols-outlined text-[18px]">timer</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[11px] uppercase tracking-wider font-semibold text-on-surface-variant mb-0.5">
+            Durasi Tercepat
+          </div>
+          <div
+            className={[
+              "text-base font-bold truncate",
+              sortBy === "duration" ? "text-tertiary" : "text-on-surface",
+            ].join(" ")}
+          >
+            {fastestDuration}
+          </div>
+          <div className="text-[11px] text-on-surface-variant mt-0.5">
+            Mulai {formatCurrency(fastestAmount, fastestCurrency)}
+          </div>
+        </div>
+        {sortBy === "duration" && (
+          <span className="material-symbols-outlined text-tertiary text-[18px] shrink-0">
+            check_circle
+          </span>
+        )}
+      </button>
+    </div>
+  );
+}
+
 // ─── Props types ─────────────────────────────────────────────────────────────
 
 type ListState =
@@ -108,6 +233,9 @@ export default function FlightResultsList({ state }: Props) {
 
   return (
     <div className="mt-6">
+      {/* Summary bar — clickable shortcut tiles for sort */}
+      <SummaryBar offers={data} sortBy={sortBy} onSortChange={setSortBy} />
+
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4 px-1">
         <p className="text-body-sm font-body-sm text-on-surface-variant">

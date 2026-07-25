@@ -16,6 +16,11 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'lh3.googleusercontent.com',
       },
+      {
+        // Duffel airline logo assets (logo_symbol_url / logo_lockup_url)
+        protocol: 'https',
+        hostname: 'assets.duffel.com',
+      },
     ],
   },
 };
