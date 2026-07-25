@@ -13,8 +13,14 @@ import {
   formatCurrency,
 } from "@/app/lib/duffelHelpers";
 import FlightResultCard from "./FlightResultCard";
+import FlightFilters, {
+  TimeFilter,
+  emptyTimeFilter,
+  isFilterActive,
+  applyTimeFilter,
+} from "./FlightFilters";
 
-// ─── Skeleton loader ─────────────────────────────────────────────────────────
+// ─── Skeleton loader ──────────────────────────────────────────────────────────
 
 function SkeletonCard() {
   return (
@@ -39,7 +45,7 @@ function SkeletonCard() {
   );
 }
 
-// ─── Error / empty states ────────────────────────────────────────────────────
+// ─── Error / empty states ─────────────────────────────────────────────────────
 
 function ErrorState({ message }: { message: string }) {
   return (
@@ -70,7 +76,33 @@ function EmptyState() {
   );
 }
 
-// ─── Summary Bar ─────────────────────────────────────────────────────────────
+/** Shown when active filters produce zero results */
+function NoFilterResultsState({ onReset }: { onReset: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center mb-4">
+        <span className="material-symbols-outlined text-outline text-3xl">manage_search</span>
+      </div>
+      <h3 className="text-headline-sm font-headline-sm text-on-surface mb-2">
+        Tidak Ada Penerbangan yang Cocok
+      </h3>
+      <p className="text-body-md font-body-md text-on-surface-variant max-w-sm mb-5">
+        Tidak ada penerbangan yang cocok dengan filter waktu yang dipilih. Coba hapus beberapa
+        filter.
+      </p>
+      <button
+        type="button"
+        onClick={onReset}
+        className="inline-flex items-center gap-2 bg-primary text-on-primary px-5 py-2.5 rounded-lg text-label-md font-label-md hover:bg-surface-tint active:scale-95 transition-all duration-200 shadow-[0px_4px_8px_-2px_rgba(0,101,145,0.35)]"
+      >
+        <span className="material-symbols-outlined text-[16px]">filter_alt_off</span>
+        Reset Filter
+      </button>
+    </div>
+  );
+}
+
+// ─── Summary Bar ──────────────────────────────────────────────────────────────
 
 interface SummaryBarProps {
   offers: DuffelOffer[];
@@ -185,7 +217,7 @@ function SummaryBar({ offers, sortBy, onSortChange }: SummaryBarProps) {
   );
 }
 
-// ─── Props types ─────────────────────────────────────────────────────────────
+// ─── Props types ──────────────────────────────────────────────────────────────
 
 type ListState =
   | { status: "idle" }
@@ -197,10 +229,11 @@ interface Props {
   state: ListState;
 }
 
-// ─── Main Results List ───────────────────────────────────────────────────────
+// ─── Main Results List ────────────────────────────────────────────────────────
 
 export default function FlightResultsList({ state }: Props) {
   const [sortBy, setSortBy] = useState<SortOption>("price");
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>(emptyTimeFilter());
 
   if (state.status === "idle") return null;
 
@@ -229,49 +262,101 @@ export default function FlightResultsList({ state }: Props) {
     return <EmptyState />;
   }
 
-  const sorted = sortOffers(data, sortBy);
+  // 1. Apply time filter
+  const filtered = applyTimeFilter(data, timeFilter);
+
+  // 2. Sort the filtered results
+  const sorted = sortOffers(filtered, sortBy);
+
+  const filterActive = isFilterActive(timeFilter);
+
+  function resetFilter() {
+    setTimeFilter(emptyTimeFilter());
+  }
 
   return (
     <div className="mt-6">
-      {/* Summary bar — clickable shortcut tiles for sort */}
+      {/* Summary bar — clickable shortcut tiles for sort, based on ALL data */}
       <SummaryBar offers={data} sortBy={sortBy} onSortChange={setSortBy} />
 
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4 px-1">
-        <p className="text-body-sm font-body-sm text-on-surface-variant">
-          Menampilkan{" "}
-          <span className="font-semibold text-on-surface">{data.length}</span> penerbangan
-        </p>
-
-        {/* Sort dropdown */}
-        <div className="flex items-center gap-2">
-          <span className="text-body-sm font-body-sm text-on-surface-variant whitespace-nowrap">
-            Urutkan:
-          </span>
-          <div className="relative">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[16px] text-primary pointer-events-none">
-              sort
-            </span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="pl-8 pr-8 py-2 bg-surface-container-low border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary hover:border-primary transition-all duration-200 appearance-none cursor-pointer"
-            >
-              <option value="price">Harga Termurah</option>
-              <option value="duration">Durasi Tercepat</option>
-            </select>
-            <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-[16px] text-outline pointer-events-none">
-              expand_more
-            </span>
-          </div>
+      {/* ── Two-column layout: sidebar filter + results list ── */}
+      <div className="flex gap-5 items-start">
+        {/* ── Sidebar filter (sticky on desktop) ── */}
+        <div className="hidden lg:block w-64 shrink-0 sticky top-[144px]">
+          <FlightFilters
+            allOffers={data}
+            baseOffers={data}
+            filter={timeFilter}
+            onFilterChange={setTimeFilter}
+          />
         </div>
-      </div>
 
-      {/* Cards */}
-      <div className="space-y-3">
-        {sorted.map((offer, index) => (
-          <FlightResultCard key={offer.id ?? index} offer={offer} />
-        ))}
+        {/* ── Results column ── */}
+        <div className="flex-1 min-w-0">
+          {/* Mobile: inline filter (collapsed by default via the component itself) */}
+          <div className="lg:hidden mb-4">
+            <FlightFilters
+              allOffers={data}
+              baseOffers={data}
+              filter={timeFilter}
+              onFilterChange={setTimeFilter}
+            />
+          </div>
+
+          {/* Toolbar */}
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4 px-1">
+            <p className="text-body-sm font-body-sm text-on-surface-variant">
+              {filterActive ? (
+                <>
+                  Menampilkan{" "}
+                  <span className="font-semibold text-on-surface">{filtered.length}</span>
+                  {" dari "}
+                  <span className="font-semibold text-on-surface">{data.length}</span>{" "}
+                  penerbangan
+                </>
+              ) : (
+                <>
+                  Menampilkan{" "}
+                  <span className="font-semibold text-on-surface">{data.length}</span> penerbangan
+                </>
+              )}
+            </p>
+
+            {/* Sort dropdown */}
+            <div className="flex items-center gap-2">
+              <span className="text-body-sm font-body-sm text-on-surface-variant whitespace-nowrap">
+                Urutkan:
+              </span>
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[16px] text-primary pointer-events-none">
+                  sort
+                </span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortOption)}
+                  className="pl-8 pr-8 py-2 bg-surface-container-low border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary hover:border-primary transition-all duration-200 appearance-none cursor-pointer"
+                >
+                  <option value="price">Harga Termurah</option>
+                  <option value="duration">Durasi Tercepat</option>
+                </select>
+                <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-[16px] text-outline pointer-events-none">
+                  expand_more
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Cards or empty-filter state */}
+          {sorted.length === 0 ? (
+            <NoFilterResultsState onReset={resetFilter} />
+          ) : (
+            <div className="space-y-3">
+              {sorted.map((offer, index) => (
+                <FlightResultCard key={offer.id ?? index} offer={offer} />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

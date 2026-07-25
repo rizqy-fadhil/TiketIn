@@ -81,8 +81,25 @@ export function getDepartingAt(offer: DuffelOffer): string {
   return firstSegment(offer)?.departing_at ?? "";
 }
 
+/**
+ * Returns arriving_at from the FIRST segment of the first slice.
+ * Used for display on the card (consistent with getDepartingAt origin).
+ * For direct flights this equals the final arrival; for transits use getFinalArrivingAt.
+ */
 export function getArrivingAt(offer: DuffelOffer): string {
   return firstSegment(offer)?.arriving_at ?? "";
+}
+
+/**
+ * Returns arriving_at from the LAST segment of the first slice.
+ * This is the true final-destination arrival time even for connecting flights.
+ *
+ * Field: offer.slices[0].segments[lastIndex].arriving_at
+ */
+export function getFinalArrivingAt(offer: DuffelOffer): string {
+  const segments = offer.slices?.[0]?.segments;
+  if (!segments || segments.length === 0) return "";
+  return segments[segments.length - 1]?.arriving_at ?? "";
 }
 
 export function getOriginIata(offer: DuffelOffer): string {
@@ -267,6 +284,70 @@ export function parseDuration(iso: string): string {
   if (hours) parts.push(`${hours}j`);
   if (minutes) parts.push(`${minutes}m`);
   return parts.length ? parts.join(" ") : "N/A";
+}
+
+// ─── Time-of-day filter helpers ──────────────────────────────────────────────
+
+/**
+ * The four preset time-of-day buckets used in the filter sidebar.
+ * Ranges are [startHour, endHour) in 24-hour format.
+ * 'night' is [18, 24) — matched as hour >= 18.
+ */
+export type TimeOfDay = "morning" | "midday" | "afternoon" | "night";
+
+export interface TimeSlot {
+  id: TimeOfDay;
+  label: string;
+  range: string;
+  /** Inclusive start hour (0-23) */
+  startHour: number;
+  /** Exclusive end hour (1-24); use 24 to mean end of day */
+  endHour: number;
+  icon: string;
+}
+
+export const TIME_OF_DAY_SLOTS: TimeSlot[] = [
+  { id: "morning",   label: "Pagi",  range: "00:00 – 06:00", startHour: 0,  endHour: 6,  icon: "bedtime" },
+  { id: "midday",    label: "Siang", range: "06:00 – 12:00", startHour: 6,  endHour: 12, icon: "wb_sunny" },
+  { id: "afternoon", label: "Sore",  range: "12:00 – 18:00", startHour: 12, endHour: 18, icon: "partly_cloudy_day" },
+  { id: "night",     label: "Malam", range: "18:00 – 24:00", startHour: 18, endHour: 24, icon: "nightlight" },
+];
+
+/**
+ * Extracts the hour (0-23) from an ISO 8601 datetime string.
+ * Returns -1 if the string is empty or unparseable.
+ */
+export function getHourFromIso(isoString: string): number {
+  if (!isoString) return -1;
+  try {
+    return new Date(isoString).getHours();
+  } catch {
+    return -1;
+  }
+}
+
+/**
+ * Returns true if `hour` falls within the given TimeSlot.
+ * An hour of -1 (parse error) never matches.
+ */
+export function hourMatchesSlot(hour: number, slot: TimeSlot): boolean {
+  if (hour < 0) return false;
+  return hour >= slot.startHour && hour < slot.endHour;
+}
+
+/**
+ * Returns true if the ISO datetime falls within ANY of the selected TimeOfDay ids.
+ * If selectedSlots is empty, returns true (= no filter applied).
+ */
+export function matchesTimeSlots(isoString: string, selectedSlots: Set<TimeOfDay>): boolean {
+  if (selectedSlots.size === 0) return true;
+  const hour = getHourFromIso(isoString);
+  if (hour < 0) return true; // parse error → don't hide the offer
+  for (const slotId of selectedSlots) {
+    const slot = TIME_OF_DAY_SLOTS.find((s) => s.id === slotId);
+    if (slot && hourMatchesSlot(hour, slot)) return true;
+  }
+  return false;
 }
 
 // ─── Sort helpers ─────────────────────────────────────────────────────────────
