@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   DuffelOffer,
+  FlightGroup,
   SortOption,
   sortOffers,
   lowestPriceOffer,
@@ -11,6 +12,7 @@ import {
   getTotalCurrency,
   getDuration,
   formatCurrency,
+  groupOffersByFlight,
 } from "@/app/lib/duffelHelpers";
 import FlightResultCard from "./FlightResultCard";
 import FlightFilters, {
@@ -19,6 +21,7 @@ import FlightFilters, {
   isFilterActive,
   applyTimeFilter,
 } from "./FlightFilters";
+import FareSelectionModal from "./FareSelectionModal";
 
 // ─── Skeleton loader ──────────────────────────────────────────────────────────
 
@@ -235,6 +238,28 @@ export default function FlightResultsList({ state }: Props) {
   const [sortBy, setSortBy] = useState<SortOption>("price");
   const [timeFilter, setTimeFilter] = useState<TimeFilter>(emptyTimeFilter());
 
+  // Modal state — tracks the currently open FlightGroup (null = closed)
+  const [selectedGroup, setSelectedGroup] = useState<FlightGroup | null>(null);
+
+  // When a card's "Pilih" button is clicked, find the FlightGroup that contains
+  // that offer and open the modal with the full group (all fare variants).
+  const handleCardSelect = useCallback(
+    (offer: DuffelOffer, groups: FlightGroup[]) => {
+      const group =
+        groups.find((g) => g.fares.some((f) => f.id === offer.id)) ?? null;
+      setSelectedGroup(group);
+    },
+    []
+  );
+
+  // Called when user confirms a specific fare inside the modal.
+  // Currently logs the selected offer — wire up to booking flow when ready.
+  const handleFareSelect = useCallback((offer: DuffelOffer) => {
+    console.log("[FareSelection] Selected offer:", offer.id, offer.total_amount, offer.total_currency);
+    // TODO: Navigate to booking/checkout page with the selected offer id
+    setSelectedGroup(null);
+  }, []);
+
   if (state.status === "idle") return null;
 
   if (state.status === "loading") {
@@ -265,8 +290,25 @@ export default function FlightResultsList({ state }: Props) {
   // 1. Apply time filter
   const filtered = applyTimeFilter(data, timeFilter);
 
-  // 2. Sort the filtered results
-  const sorted = sortOffers(filtered, sortBy);
+  // 2. Group offers by unique flight (origin+dest+dep+arr+carrier+flight_num)
+  //    so the results list shows one card per physical flight, not per fare variant.
+  //    The card for a group shows the cheapest fare price; clicking "Pilih" opens
+  //    the modal with all fare variants for that flight.
+  const groups = groupOffersByFlight(filtered);
+
+  // 3. Sort groups by the representative offer (cheapest fare in the group)
+  const sortedGroups = sortBy === "price"
+    ? [...groups].sort((a, b) => getTotalAmount(a.representative) - getTotalAmount(b.representative))
+    : [...groups].sort((a, b) => {
+        const dA = a.representative.slices?.[0]?.duration ?? "";
+        const dB = b.representative.slices?.[0]?.duration ?? "";
+        // Convert ISO duration to minutes for comparison
+        const toMin = (s: string) => {
+          const m = s.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+          return m ? parseInt(m[1] ?? "0") * 60 + parseInt(m[2] ?? "0") : Infinity;
+        };
+        return toMin(dA) - toMin(dB);
+      });
 
   const filterActive = isFilterActive(timeFilter);
 
@@ -275,26 +317,15 @@ export default function FlightResultsList({ state }: Props) {
   }
 
   return (
-    <div className="mt-6">
-      {/* Summary bar — clickable shortcut tiles for sort, based on ALL data */}
-      <SummaryBar offers={data} sortBy={sortBy} onSortChange={setSortBy} />
+    <>
+      <div className="mt-6">
+        {/* Summary bar — clickable shortcut tiles for sort, based on ALL data */}
+        <SummaryBar offers={data} sortBy={sortBy} onSortChange={setSortBy} />
 
-      {/* ── Two-column layout: sidebar filter + results list ── */}
-      <div className="flex gap-5 items-start">
-        {/* ── Sidebar filter (sticky on desktop) ── */}
-        <div className="hidden lg:block w-64 shrink-0 sticky top-[144px]">
-          <FlightFilters
-            allOffers={data}
-            baseOffers={data}
-            filter={timeFilter}
-            onFilterChange={setTimeFilter}
-          />
-        </div>
-
-        {/* ── Results column ── */}
-        <div className="flex-1 min-w-0">
-          {/* Mobile: inline filter (collapsed by default via the component itself) */}
-          <div className="lg:hidden mb-4">
+        {/* ── Two-column layout: sidebar filter + results list ── */}
+        <div className="flex gap-5 items-start">
+          {/* ── Sidebar filter (sticky on desktop) ── */}
+          <div className="hidden lg:block w-64 shrink-0 sticky top-[144px]">
             <FlightFilters
               allOffers={data}
               baseOffers={data}
@@ -303,62 +334,97 @@ export default function FlightResultsList({ state }: Props) {
             />
           </div>
 
-          {/* Toolbar */}
-          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4 px-1">
-            <p className="text-body-sm font-body-sm text-on-surface-variant">
-              {filterActive ? (
-                <>
-                  Menampilkan{" "}
-                  <span className="font-semibold text-on-surface">{filtered.length}</span>
-                  {" dari "}
-                  <span className="font-semibold text-on-surface">{data.length}</span>{" "}
-                  penerbangan
-                </>
-              ) : (
-                <>
-                  Menampilkan{" "}
-                  <span className="font-semibold text-on-surface">{data.length}</span> penerbangan
-                </>
-              )}
-            </p>
+          {/* ── Results column ── */}
+          <div className="flex-1 min-w-0">
+            {/* Mobile: inline filter (collapsible) */}
+            <div className="lg:hidden mb-4">
+              <FlightFilters
+                allOffers={data}
+                baseOffers={data}
+                filter={timeFilter}
+                onFilterChange={setTimeFilter}
+              />
+            </div>
 
-            {/* Sort dropdown */}
-            <div className="flex items-center gap-2">
-              <span className="text-body-sm font-body-sm text-on-surface-variant whitespace-nowrap">
-                Urutkan:
-              </span>
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[16px] text-primary pointer-events-none">
-                  sort
+            {/* Toolbar */}
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4 px-1">
+              <p className="text-body-sm font-body-sm text-on-surface-variant">
+                {filterActive ? (
+                  <>
+                    Menampilkan{" "}
+                    <span className="font-semibold text-on-surface">{sortedGroups.length}</span>
+                    {" dari "}
+                    <span className="font-semibold text-on-surface">
+                      {groupOffersByFlight(data).length}
+                    </span>{" "}
+                    penerbangan
+                  </>
+                ) : (
+                  <>
+                    Menampilkan{" "}
+                    <span className="font-semibold text-on-surface">{sortedGroups.length}</span>{" "}
+                    penerbangan
+                  </>
+                )}
+              </p>
+
+              {/* Sort dropdown */}
+              <div className="flex items-center gap-2">
+                <span className="text-body-sm font-body-sm text-on-surface-variant whitespace-nowrap">
+                  Urutkan:
                 </span>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  className="pl-8 pr-8 py-2 bg-surface-container-low border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary hover:border-primary transition-all duration-200 appearance-none cursor-pointer"
-                >
-                  <option value="price">Harga Termurah</option>
-                  <option value="duration">Durasi Tercepat</option>
-                </select>
-                <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-[16px] text-outline pointer-events-none">
-                  expand_more
-                </span>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[16px] text-primary pointer-events-none">
+                    sort
+                  </span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                    className="pl-8 pr-8 py-2 bg-surface-container-low border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary hover:border-primary transition-all duration-200 appearance-none cursor-pointer"
+                  >
+                    <option value="price">Harga Termurah</option>
+                    <option value="duration">Durasi Tercepat</option>
+                  </select>
+                  <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-[16px] text-outline pointer-events-none">
+                    expand_more
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Cards or empty-filter state */}
-          {sorted.length === 0 ? (
-            <NoFilterResultsState onReset={resetFilter} />
-          ) : (
-            <div className="space-y-3">
-              {sorted.map((offer, index) => (
-                <FlightResultCard key={offer.id ?? index} offer={offer} />
-              ))}
-            </div>
-          )}
+            {/* Cards or empty-filter state */}
+            {sortedGroups.length === 0 ? (
+              <NoFilterResultsState onReset={resetFilter} />
+            ) : (
+              <div className="space-y-3">
+                {sortedGroups.map((group) => (
+                  /*
+                   * Each card shows the representative offer (cheapest fare in the group).
+                   * Clicking "Pilih" opens the FareSelectionModal with all fare variants
+                   * (fares[]) for that physical flight.
+                   *
+                   * If the group has only 1 fare (airline doesn't offer multi-fare variants),
+                   * the modal still opens but shows a single fare card — graceful Rencana B.
+                   */
+                  <FlightResultCard
+                    key={group.key}
+                    offer={group.representative}
+                    onSelect={(offer) => handleCardSelect(offer, sortedGroups)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Fare selection modal — rendered outside the layout flow to avoid stacking context issues */}
+      <FareSelectionModal
+        group={selectedGroup}
+        onClose={() => setSelectedGroup(null)}
+        onSelectFare={handleFareSelect}
+      />
+    </>
   );
 }
 

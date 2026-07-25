@@ -21,9 +21,11 @@ import {
 
 interface Props {
   offer: DuffelOffer;
+  /** Called when the user clicks "Pilih". Parent opens the fare-selection modal. */
+  onSelect: (offer: DuffelOffer) => void;
 }
 
-export default function FlightResultCard({ offer }: Props) {
+export default function FlightResultCard({ offer, onSelect }: Props) {
   const carrierName = getCarrierName(offer);
   const flightNumber = getFlightNumber(offer);
   const departingAt = getDepartingAt(offer);
@@ -141,6 +143,7 @@ export default function FlightResultCard({ offer }: Props) {
         </div>
         <button
           type="button"
+          onClick={() => onSelect(offer)}
           className="bg-primary text-on-primary px-6 py-2.5 rounded-lg text-label-md font-label-md hover:bg-surface-tint w-full shadow-[0px_4px_8px_-2px_rgba(0,101,145,0.35)] active:scale-95 transition-all duration-200 flex justify-center items-center gap-1.5"
         >
           <span>Pilih</span>

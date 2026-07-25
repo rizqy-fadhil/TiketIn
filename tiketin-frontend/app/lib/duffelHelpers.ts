@@ -1,9 +1,12 @@
 // Helper functions to safely extract fields from a Duffel API offer object.
 // Uses optional chaining + nullish coalescing to never crash on missing fields.
 //
-// Field sources verified against @duffel/api typings.d.ts:
+// Field sources verified against @duffel/api typings.d.ts AND live Duffel sandbox data:
 //   - offer.total_amount / offer.total_currency               (top-level)
+//   - offer.conditions.change_before_departure                (top-level — {allowed, penalty_amount, penalty_currency})
+//   - offer.conditions.refund_before_departure                (top-level — same shape)
 //   - offer.slices[].duration                                  (ISO 8601, e.g. "PT2H30M")
+//   - offer.slices[].fare_brand_name                           (e.g. "Economy Light", "Economy Flex" — verified live)
 //   - offer.slices[].segments[].departing_at / arriving_at    (ISO 8601 datetime)
 //   - offer.slices[].segments[].origin.iata_code              (e.g. "CGK")
 //   - offer.slices[].segments[].destination.iata_code         (e.g. "SUB")
@@ -48,8 +51,33 @@ export interface DuffelSegment {
   duration?: string;
 }
 
+/**
+ * Verified live: each policy object from offer.conditions.change_before_departure
+ * and offer.conditions.refund_before_departure has this shape.
+ */
+export interface DuffelConditionPolicy {
+  /** Whether the action (change/refund) is allowed at all */
+  allowed?: boolean;
+  /** Penalty amount as a decimal string (e.g. "200.00"), or null if no penalty or not applicable */
+  penalty_amount?: string | null;
+  /** ISO 4217 currency of the penalty (e.g. "GBP"), or null */
+  penalty_currency?: string | null;
+}
+
+export interface DuffelOfferConditions {
+  change_before_departure?: DuffelConditionPolicy | null;
+  refund_before_departure?: DuffelConditionPolicy | null;
+}
+
 export interface DuffelSlice {
   duration?: string;
+  /**
+   * Fare brand name for this slice (verified live from Duffel sandbox).
+   * Examples: "Economy Light", "Economy Comfort", "Economy Flex", "Basic Economy".
+   * Used to label fare variants in the multi-fare modal.
+   * Field: offer.slices[0].fare_brand_name
+   */
+  fare_brand_name?: string | null;
   segments?: DuffelSegment[];
 }
 
@@ -57,6 +85,12 @@ export interface DuffelOffer {
   id?: string;
   total_amount?: string;
   total_currency?: string;
+  /**
+   * Top-level fare conditions (verified live from Duffel sandbox).
+   * Contains change_before_departure and refund_before_departure policies.
+   * Field: offer.conditions
+   */
+  conditions?: DuffelOfferConditions | null;
   slices?: DuffelSlice[];
 }
 
@@ -124,7 +158,7 @@ export function getTotalCurrency(offer: DuffelOffer): string {
   return offer.total_currency ?? "USD";
 }
 
-// ─── New: Airline logo ────────────────────────────────────────────────────────
+// ─── Airline logo ─────────────────────────────────────────────────────────────
 
 /**
  * Returns the best available logo URL for the marketing carrier.
@@ -137,6 +171,126 @@ export function getTotalCurrency(offer: DuffelOffer): string {
 export function getAirlineLogoUrl(offer: DuffelOffer): string | null {
   const carrier = firstSegment(offer)?.marketing_carrier;
   return carrier?.logo_symbol_url ?? carrier?.logo_lockup_url ?? null;
+}
+
+// ─── Fare brand & conditions ──────────────────────────────────────────────────
+
+/**
+ * Returns the fare brand name for the first slice.
+ * Verified live: "Economy Light", "Economy Comfort", "Economy Flex", "Basic Economy".
+ * Returns null when not provided by the airline.
+ *
+ * Field: offer.slices[0].fare_brand_name
+ */
+export function getFareBrandName(offer: DuffelOffer): string | null {
+  return offer.slices?.[0]?.fare_brand_name ?? null;
+}
+
+/**
+ * Returns the top-level offer conditions object (change + refund policies).
+ * Verified live: both change_before_departure and refund_before_departure
+ * have shape { allowed: boolean, penalty_amount: string|null, penalty_currency: string|null }.
+ *
+ * Field: offer.conditions
+ */
+export function getOfferConditions(offer: DuffelOffer): DuffelOfferConditions | null {
+  return offer.conditions ?? null;
+}
+
+/** Full name of the origin airport, e.g. "Heathrow Airport" */
+export function getOriginName(offer: DuffelOffer): string {
+  return firstSegment(offer)?.origin?.name ?? "";
+}
+
+/** Full name of the destination airport */
+export function getDestinationName(offer: DuffelOffer): string {
+  return firstSegment(offer)?.destination?.name ?? "";
+}
+
+/**
+ * Returns the total number of segments in the first slice.
+ * 1 = direct flight, 2+ = connecting with transits.
+ */
+export function getSegmentCount(offer: DuffelOffer): number {
+  return offer.slices?.[0]?.segments?.length ?? 1;
+}
+
+// ─── Flight grouping for multi-fare modal (Rencana A) ─────────────────────────
+
+/**
+ * A group of offers that share the same physical flight (same origin, destination,
+ * departure time, arrival time, marketing carrier and flight number for the first
+ * segment). Each entry in `fares` is a distinct fare option (different price,
+ * baggage, and/or conditions) for that same departure.
+ *
+ * Verified against live Duffel sandbox data (LHR→JFK 2026-08-15):
+ * - 235 total offers → 59 unique flight keys
+ * - 49 of those 59 keys have 2-5 fare variants
+ * - Variants differ in: total_amount, slices[0].fare_brand_name, offer.conditions
+ *
+ * NOTE: If you switch to a production Duffel token or a different airline set,
+ * the grouping logic still works because the key is computed from actual segment
+ * fields, not hardcoded. Airlines that don't expose multiple fare brands will
+ * produce single-entry groups and the modal will show a single fare card.
+ */
+export interface FlightGroup {
+  /** Stable key for React list rendering */
+  key: string;
+  /** Representative offer for displaying flight summary (use cheapest / first) */
+  representative: DuffelOffer;
+  /** All fare variants for this flight, sorted cheapest-first */
+  fares: DuffelOffer[];
+}
+
+/**
+ * Groups an array of DuffelOffers by flight identity:
+ *   origin.iata_code + destination.iata_code + departing_at + arriving_at
+ *   + marketing_carrier.iata_code + marketing_carrier_flight_number
+ *
+ * Each resulting FlightGroup contains all fare options for that flight,
+ * sorted cheapest-first. The `representative` offer is the cheapest fare.
+ *
+ * Returns groups sorted cheapest-representative-first (same default sort as
+ * the results list uses).
+ */
+export function groupOffersByFlight(offers: DuffelOffer[]): FlightGroup[] {
+  const map = new Map<string, DuffelOffer[]>();
+
+  for (const offer of offers) {
+    const seg = offer.slices?.[0]?.segments?.[0];
+    if (!seg) continue;
+
+    const key = [
+      seg.origin?.iata_code ?? "",
+      seg.destination?.iata_code ?? "",
+      seg.departing_at ?? "",
+      seg.arriving_at ?? "",
+      seg.marketing_carrier?.iata_code ?? "",
+      seg.marketing_carrier_flight_number ?? "",
+    ].join("|");
+
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(offer);
+  }
+
+  const groups: FlightGroup[] = [];
+
+  for (const [key, groupOffers] of map.entries()) {
+    // Sort fares cheapest-first within each group
+    const sorted = [...groupOffers].sort(
+      (a, b) => getTotalAmount(a) - getTotalAmount(b)
+    );
+    groups.push({
+      key,
+      representative: sorted[0],
+      fares: sorted,
+    });
+  }
+
+  // Sort groups by cheapest fare price (same default as the results list)
+  return groups.sort(
+    (a, b) => getTotalAmount(a.representative) - getTotalAmount(b.representative)
+  );
 }
 
 // ─── New: Baggage info ────────────────────────────────────────────────────────
