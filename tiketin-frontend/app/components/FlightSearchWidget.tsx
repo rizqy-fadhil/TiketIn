@@ -67,13 +67,21 @@ function AirportCombobox({
     setOpen(false);
   }
 
-  // Compact mode: tighter display; Hero mode: normal
+  // Compact mode: tighter display; Hero mode: normal.
+  //
+  // Hero mode trigger uses `flex-1` (not `min-h`) so the button always fills
+  // the full height of its container. The container is `flex flex-col` below,
+  // and the grid uses `items-stretch`, so both Asal and Tujuan containers are
+  // forced to the same height — and their flex-1 buttons fill that height
+  // completely regardless of how many lines the airport name takes.
   const triggerClass = compact
     ? "w-full flex items-center gap-1.5 bg-surface border border-outline-variant rounded-lg px-2.5 py-2 text-left hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 min-w-[120px]"
-    : "w-full flex items-center gap-2 bg-surface border border-outline-variant rounded-lg px-3 py-3 text-left hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all duration-200";
+    : "w-full flex-1 flex items-center gap-2 bg-surface border border-outline-variant rounded-lg px-3 py-3 text-left hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all duration-200";
 
   return (
-    <div ref={containerRef} className="relative flex-1 min-w-0">
+    // `flex flex-col` + button `flex-1` → button fills remaining container height.
+    // In compact mode the container is a plain flex sibling so flex-col is harmless.
+    <div ref={containerRef} className="relative flex-1 min-w-0 flex flex-col">
       {!compact && (
         <label
           htmlFor={id}
@@ -105,7 +113,9 @@ function AirportCombobox({
               <span className="block font-bold text-on-surface text-base leading-tight truncate">
                 {selected.city}
               </span>
-              <span className="block text-xs text-on-surface-variant">{selected.iata} · {selected.name.split(" ").slice(0, 3).join(" ")}</span>
+              {/* truncate: belt-and-suspenders so this line never wraps and
+                  adds an unexpected extra line that would change the box height */}
+              <span className="block text-xs text-on-surface-variant truncate overflow-hidden">{selected.iata} · {selected.name.split(" ").slice(0, 3).join(" ")}</span>
             </span>
           )
         ) : (
@@ -144,7 +154,7 @@ function AirportCombobox({
               />
             </div>
           </div>
-          <ul className="max-h-60 overflow-y-auto py-1">
+          <ul className="max-h-72 overflow-y-auto py-1">
             {filtered.length === 0 ? (
               <li className="px-4 py-3 text-sm text-on-surface-variant text-center">
                 Bandara tidak ditemukan
@@ -440,7 +450,9 @@ export default function FlightSearchWidget({
       </div>
 
       {/* Fields */}
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_1fr] gap-3 items-end">
+      {/* items-stretch: all columns grow to the same height so Asal and Tujuan
+          boxes never differ in size even when one has a longer airport name. */}
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_1fr] gap-3 items-stretch">
         {/* Origin */}
         <AirportCombobox
           id="hero-origin"

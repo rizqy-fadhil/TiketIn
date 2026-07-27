@@ -8,9 +8,11 @@ const HERO_IMAGE =
 
 export default function HeroSection() {
   return (
-    <section className="relative pt-24 pb-32 px-margin-mobile md:px-margin-desktop overflow-hidden flex flex-col items-center justify-center min-h-[600px] bg-gradient-to-b from-surface-container-high to-background">
-      {/* Background image */}
-      <div className="absolute inset-0 z-0">
+    <section className="relative pt-24 pb-32 px-margin-mobile md:px-margin-desktop flex flex-col items-center justify-center min-h-[600px] bg-gradient-to-b from-surface-container-high to-background">
+      {/* Background image — overflow-hidden stays on THIS wrapper so the image
+          is still clipped to the section, not on the section itself which would
+          clip the dropdown menus that spill outside the section boundary. */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
         <Image
           alt="Airplane wing over clouds"
           src={HERO_IMAGE}
@@ -32,8 +34,8 @@ export default function HeroSection() {
         </p>
       </div>
 
-      {/* Search card — hero mode; routing handled internally via useRouter */}
-      <div className="relative z-20 w-full max-w-5xl glass-panel rounded-xl p-6 md:p-8">
+      {/* Search card — z-30 so dropdowns inside (z-60) render above PromoSection */}
+      <div className="relative z-30 w-full max-w-5xl glass-panel rounded-xl p-6 md:p-8">
         <FlightSearchWidget mode="hero" />
       </div>
     </section>
