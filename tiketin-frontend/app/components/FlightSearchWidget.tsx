@@ -192,7 +192,16 @@ function DatePicker({
   onChange: (v: string) => void;
   compact?: boolean;
 }) {
-  const today = new Date().toISOString().split("T")[0];
+  // Compute `today` client-side only (useEffect) to avoid SSR/client hydration
+  // mismatch — new Date() on the server (UTC) vs browser (WIB/UTC+7) can differ,
+  // causing a React hydration warning and potentially broken event attachment.
+  const [today, setToday] = useState("");
+  // Ref to the hidden <input type="date"> used in compact mode
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setToday(new Date().toISOString().split("T")[0]);
+  }, []);
 
   // Display formatted date for compact mode
   function displayDate(raw: string) {
@@ -208,29 +217,75 @@ function DatePicker({
     }
   }
 
+  // Programmatically open the native date picker.
+  // showPicker() is supported in Chrome 99+, Firefox 101+, Safari 16+.
+  // Falls back to focus()+click() for older browsers.
+  function openPicker() {
+    const input = inputRef.current;
+    if (!input) return;
+    try {
+      (input as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
+    } catch {
+      input.focus();
+      input.click();
+    }
+  }
+
+  // ── COMPACT variant ─────────────────────────────────────────────────────────
+  //
+  // ROOT CAUSE of the original bug: the "absolute inset-0 opacity-0 input overlay"
+  // pattern is inherently fragile. The hidden <input> had no explicit z-index,
+  // so sibling <span> elements (icon, label text) painted on top of it in the
+  // stacking order — clicks landed on the spans, never reaching the input.
+  // Adding z-index + pointer-events-none to spans helped theoretically but still
+  // failed in practice because `showPicker()` (the native calendar) requires the
+  // click to actually land on the <input> element in the hit-test tree.
+  //
+  // FIX: Completely replace the overlay pattern with the same approach used by
+  // AirportCombobox — use a proper <button> as the visual trigger, and open the
+  // native picker programmatically via showPicker() on a ref-bound hidden input.
+  // Zero z-index tricks, zero pointer-events conflicts.
   if (compact) {
     return (
       <div className="relative flex-1 min-w-[130px]">
-        <div className="relative flex items-center gap-1.5 bg-surface border border-outline-variant rounded-lg px-2.5 py-2 hover:border-primary transition-all duration-200 cursor-pointer">
-          <span className="material-symbols-outlined text-primary text-[16px] shrink-0">calendar_today</span>
+        {/* Visible trigger — a real <button>, so it always receives click events */}
+        <button
+          type="button"
+          onClick={openPicker}
+          className="w-full flex items-center gap-1.5 bg-surface border border-outline-variant rounded-lg px-2.5 py-2 text-left hover:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 min-w-[130px]"
+        >
+          <span className="material-symbols-outlined text-primary text-[16px] shrink-0">
+            calendar_today
+          </span>
           <span className="flex-1 min-w-0">
             <span className="block text-xs text-on-surface-variant leading-none mb-0.5">{label}</span>
             <span className="block text-sm font-bold text-on-surface">
               {displayDate(value) ?? <span className="text-on-surface-variant/60 font-normal">Pilih…</span>}
             </span>
           </span>
-          <input
-            type="date"
-            value={value}
-            min={today}
-            onChange={(e) => onChange(e.target.value)}
-            className="absolute inset-0 w-full opacity-0 cursor-pointer"
-          />
-        </div>
+        </button>
+
+        {/*
+          Hidden input — never receives direct clicks (pointer-events-none).
+          Opened exclusively via showPicker() called from the button above.
+          Positioned off-screen to avoid affecting layout; opacity-0 so it
+          stays invisible even if the browser paints it at 0×0 size.
+        */}
+        <input
+          ref={inputRef}
+          type="date"
+          value={value}
+          min={today}
+          onChange={(e) => onChange(e.target.value)}
+          aria-hidden="true"
+          tabIndex={-1}
+          className="absolute left-0 top-0 opacity-0 pointer-events-none w-full h-full"
+        />
       </div>
     );
   }
 
+  // ── HERO variant (unchanged — direct visible input, no overlay needed) ───────
   return (
     <div className="relative flex-1 min-w-0">
       <label className="block text-label-sm font-label-sm text-on-surface-variant mb-1.5">
