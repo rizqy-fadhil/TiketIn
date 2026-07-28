@@ -12,6 +12,9 @@ services:
         condition: service_healthy
     networks:
       - tiketin-network
+    # profiles: hanya jalan saat `docker compose --profile prod up`
+    # Saat local dev, backend dijalankan langsung: npm run start:dev
+    profiles: [prod]
 
   frontend:
     build:
@@ -24,6 +27,9 @@ services:
       - backend
     networks:
       - tiketin-network
+    # profiles: hanya jalan saat `docker compose --profile prod up`
+    # Saat local dev, frontend dijalankan langsung: npm run dev
+    profiles: [prod]
 
   db:
     image: postgres:15-alpine
