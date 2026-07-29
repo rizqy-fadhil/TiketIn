@@ -52,13 +52,13 @@ export default function Header() {
             </Link>
             <Link
               className="h-full flex items-center text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-inverse-primary transition-colors duration-200 text-label-md font-label-md"
-              href="#"
+              href="/promo"
             >
               Promo
             </Link>
             <Link
               className="h-full flex items-center text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-inverse-primary transition-colors duration-200 text-label-md font-label-md"
-              href="#"
+              href="/bantuan"
             >
               Bantuan
             </Link>

@@ -16,7 +16,7 @@ export default function Footer() {
           </Link>
           <Link
             className="text-on-surface-variant dark:text-surface-variant hover:underline hover:text-primary dark:hover:text-inverse-primary text-body-sm font-body-sm"
-            href="#"
+            href="/bantuan"
           >
             Pusat Bantuan
           </Link>

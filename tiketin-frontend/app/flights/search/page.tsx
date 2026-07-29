@@ -136,13 +136,13 @@ function FlightSearchInner() {
             </Link>
             <Link
               className="text-on-surface-variant hover:text-primary transition-colors duration-200 text-label-md font-label-md pb-[6px]"
-              href="#"
+              href="/promo"
             >
               Promo
             </Link>
             <Link
               className="text-on-surface-variant hover:text-primary transition-colors duration-200 text-label-md font-label-md pb-[6px]"
-              href="#"
+              href="/bantuan"
             >
               Bantuan
             </Link>
@@ -225,7 +225,7 @@ function FlightSearchInner() {
               <Link
                 key={label}
                 className="text-on-surface-variant text-label-sm font-label-sm hover:underline hover:text-primary transition-colors"
-                href="#"
+                href={label === "Pusat Bantuan" ? "/bantuan" : "#"}
               >
                 {label}
               </Link>
